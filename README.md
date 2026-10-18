@@ -64,11 +64,11 @@ En GitHub Actions los tests corren contra un PostgreSQL de servicio en cada push
 Pensado para funcionar sin coste:
 
 - API en el plan gratuito de Render (Docker).
-- PostgreSQL gratuito en Supabase o Neon.
+- PostgreSQL gratuito en Neon (por qué, en D11 de [`docs/diseno.md`](docs/diseno.md)).
 
-Variables de entorno: `DATABASE_URL` (formato JDBC), `DATABASE_USERNAME`, `DATABASE_PASSWORD`.
+Variables de entorno: `DATABASE_URL` (formato JDBC), `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 
-> El plan gratuito de Render suspende el servicio tras un rato sin tráfico: la primera petición puede tardar en responder.
+> Render y Neon se suspenden tras un rato sin tráfico: la primera petición puede tardar varios segundos en responder.
 
 ## Datos
 

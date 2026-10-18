@@ -26,7 +26,7 @@ flowchart LR
         S --> Repo[Repositorios<br/>SQL]
         W[Worker de webhooks<br/>mismo proceso]
     end
-    Repo --> DB[(PostgreSQL<br/>Supabase / Neon)]
+    Repo --> DB[(PostgreSQL<br/>Neon)]
     W --> DB
     W -->|POST firmado HMAC| C[Sistemas cliente]
 ```
@@ -140,10 +140,11 @@ CREATE TABLE shipment_events (
   occurred_at TIMESTAMPTZ     NOT NULL,        -- cuándo pasó en el mundo real
   recorded_by UUID            NOT NULL REFERENCES users(id),
   created_at  TIMESTAMPTZ     NOT NULL DEFAULT now(),  -- cuándo se registró
-  -- D2: con from_status NULL la FK no se comprueba (evento inicial)
-  FOREIGN KEY (from_status, to_status)
+  -- D2: con from_status NULL la FK no se comprueba (evento inicial).
+  -- El servicio captura estos nombres para traducir el error: no los cambies.
+  CONSTRAINT fk_events_transition FOREIGN KEY (from_status, to_status)
     REFERENCES allowed_transitions (from_status, to_status),
-  CHECK (from_status IS NOT NULL OR to_status = 'CREATED')
+  CONSTRAINT ck_events_initial CHECK (from_status IS NOT NULL OR to_status = 'CREATED')
 );
 
 CREATE TABLE webhook_subscriptions (
@@ -175,7 +176,21 @@ CREATE INDEX idx_deliveries_pending       ON webhook_deliveries (next_attempt_at
   WHERE status = 'PENDING';
 ```
 
-## 6. Flujo crítico: registrar un evento
+## 6. Flujos críticos
+
+### Crear un envío
+
+Todo dentro de **una transacción**:
+
+1. Generar `tracking_code` con `SecureRandom` (`LT-` + 8 caracteres). Un código predecible permitiría
+   recorrer envíos ajenos desde el endpoint público (D5).
+2. `INSERT INTO shipments`. Si choca con el `UNIQUE` de `tracking_code`, se genera otro y se reintenta una vez.
+3. `INSERT INTO shipment_events (from_status = NULL, to_status = 'CREATED', ...)`.
+4. `INSERT INTO webhook_deliveries` para las suscripciones a `CREATED` (D3) — mismo método del repositorio
+   que en el flujo de registrar evento.
+5. `COMMIT`.
+
+### Registrar un evento
 
 Todo dentro de **una transacción**:
 
@@ -183,13 +198,18 @@ Todo dentro de **una transacción**:
 2. Si no existe → `404`.
 3. `INSERT INTO shipment_events (from_status = estado actual, to_status = nuevo, ...)`.
    Si la transición no está permitida, la FK falla → el servicio lo traduce a `409 Conflict`.
+   El nombre de la restricción se lee con `PSQLException.getServerErrorMessage().getConstraint()`
+   (igual a `fk_events_transition`), no buscando texto en el mensaje.
 4. `UPDATE shipments SET status = nuevo, updated_at = now()` (+ `delivered_at` si es `DELIVERED`).
 5. `INSERT INTO webhook_deliveries` una fila por cada suscripción activa interesada en ese estado (D3).
 6. `COMMIT`.
 
-**Worker de webhooks** (cada ~5 s):
+### Worker de webhooks (cada ~5 s)
+
 1. `SELECT ... FROM webhook_deliveries WHERE status = 'PENDING' AND next_attempt_at <= now() ORDER BY next_attempt_at LIMIT 10 FOR UPDATE SKIP LOCKED`.
 2. `POST` a la URL con cabecera `X-LogiTrack-Signature` (HMAC-SHA256 del cuerpo con `secret`).
+   **Timeouts obligatorios** de conexión y lectura (5 s): el cliente HTTP de Java no tiene por defecto,
+   y una URL colgada dejaría el worker parado con una conexión del pool y las filas bloqueadas.
 3. Respuesta 2xx → `SENT`. Error → `attempts + 1`, `next_attempt_at = now() + 2^attempts minutos`. Tras 5 intentos → `FAILED`.
 
 ## 7. API
@@ -204,6 +224,10 @@ Todo dentro de **una transacción**:
 | GET | `/tracking/:trackingCode` | Público, rate limit | Estado y ciudades, sin datos personales (D5) |
 | GET/POST/DELETE | `/webhooks` | ADMIN | Gestiona suscripciones |
 | GET | `/health` | Público | Comprobación de vida |
+
+**Rate limit de `/tracking`:** por IP del cliente. Detrás del proxy de Render todas las peticiones llegan
+desde la misma IP, así que hace falta `server.forward-headers-strategy: framework` para leer la IP real
+de `X-Forwarded-For`. Un limitador en memoria basta mientras haya una sola instancia.
 
 **Códigos de error:** `400` validación · `401` sin token · `403` sin rol · `404` no existe · `409` transición inválida · `429` demasiadas peticiones.
 
@@ -221,5 +245,13 @@ Todo dentro de **una transacción**:
 | D8 | Spring JDBC (`JdbcClient`) con SQL explícito, sin JPA | Control total de `FOR UPDATE`, `SKIP LOCKED` y enums de PostgreSQL; el SQL queda visible para revisarlo |
 | D9 | Flyway para migraciones | Estándar en Spring, versiona el esquema junto al código |
 | D10 | Paquetes por funcionalidad (`shipment`, `tracking`, `webhook`, `auth`, `shared`) | Cada módulo agrupa su controlador, servicio y repositorio |
+| D11 | BD en Neon, endpoint directo (no `-pooler`) | Se despierta sola tras la inactividad; Supabase pausa el proyecto tras ~7 días sin uso y hay que reactivarlo a mano, justo el caso de una demo de portafolio. El pooler de Neon va en modo transacción y choca con las sentencias preparadas de pgjdbc |
+| D12 | El primer ADMIN se crea al arrancar desde `ADMIN_EMAIL` y `ADMIN_PASSWORD`, solo si no hay usuarios | No hay endpoint de registro y una contraseña en una migración sería un secreto en el repo |
 
-**Pendiente:** Supabase o Neon (se decide al desplegar; el código no cambia).
+**D11, consecuencias:** la primera petición tras un rato sin uso tarda varios segundos (Render y Neon
+arrancan en frío). Neon da la URL en formato libpq (`postgresql://...`); `DATABASE_URL` necesita
+`jdbc:postgresql://...` con usuario y contraseña en sus variables. Revisar los límites del plan gratuito al desplegar.
+
+**D4, límite aceptado:** Render suspende el servicio tras ~15 min sin tráfico y el worker se para con él.
+Los reintentos programados más allá de ese tiempo salen cuando llega la siguiente petición. No se pierde
+ninguno (están en el outbox), solo llegan tarde.

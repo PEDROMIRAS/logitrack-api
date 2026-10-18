@@ -63,8 +63,9 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · Flyway · Spring JDBC (`JdbcClien
 
 ## Despliegue (sin coste)
 
-- API en el plan gratuito de Render (Dockerfile). BD en Supabase o Neon (pendiente de elegir).
-- Variables: `DATABASE_URL` (formato JDBC), `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `PORT`.
+- API en el plan gratuito de Render (Dockerfile). BD en Neon, endpoint directo, no el `-pooler` (D11).
+- Variables: `DATABASE_URL` (formato JDBC), `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `PORT`,
+  `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (D12).
 - Pool de conexiones limitado a 5 por los límites de los planes gratuitos.
 
 ## Estado
