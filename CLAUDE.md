@@ -4,7 +4,7 @@ API REST de seguimiento de envíos. Proyecto de portafolio de Pedro (backend jun
 Es la primera pieza del ecosistema LogiTrack; más adelante vendrán `logitrack-tarifas` (PL/SQL en Oracle),
 `logitrack-inventario` y `logitrack-rutas`, cada uno en su propio repo.
 
-El diseño completo (arquitectura, máquina de estados, modelo de datos, flujos y decisiones D1–D10) está en:
+El diseño completo (arquitectura, máquina de estados, modelo de datos, flujos y decisiones D1–D12) está en:
 @docs/diseno.md
 
 ## Cómo trabajar conmigo
