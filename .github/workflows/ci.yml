@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # Las ramas se prueban por su PR; push solo en main evita ejecutar todo dos veces
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -23,11 +25,11 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
           cache: maven
       - name: Tests
-        run: mvn -B verify
+        run: ./mvnw -B verify

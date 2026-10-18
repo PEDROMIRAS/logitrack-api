@@ -78,6 +78,24 @@ class MigrationsTest {
             .hasMessageContaining("ck_events_initial");
     }
 
+    @Test
+    void aceptaUnSoloEventoInicialPorEnvio() {
+        assertThat(insertaEventoInicial()).isEqualTo(1);
+
+        assertThatThrownBy(this::insertaEventoInicial)
+            .isInstanceOf(DataIntegrityViolationException.class)
+            .hasMessageContaining("uq_events_initial");
+    }
+
+    private int insertaEventoInicial() {
+        return jdbc.sql("""
+                INSERT INTO shipment_events (shipment_id, from_status, to_status, occurred_at, recorded_by)
+                VALUES (:shipment, NULL, 'CREATED'::shipment_status, now(), :user)""")
+                .param("shipment", shipmentId)
+                .param("user", userId)
+                .update();
+    }
+
     private int insertaEvento(String desde, String hasta) {
         return jdbc.sql("""
                 INSERT INTO shipment_events (shipment_id, from_status, to_status, occurred_at, recorded_by)

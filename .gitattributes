@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# mvnw se ejecuta con sh: siempre LF. mvnw.cmd con cmd: siempre CRLF
+/mvnw text eol=lf
+*.cmd text eol=crlf

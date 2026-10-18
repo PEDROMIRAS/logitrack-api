@@ -174,6 +174,9 @@ CREATE INDEX idx_shipments_status_created ON shipments (status, created_at DESC)
 CREATE INDEX idx_events_shipment_time     ON shipment_events (shipment_id, occurred_at);
 CREATE INDEX idx_deliveries_pending       ON webhook_deliveries (next_attempt_at)
   WHERE status = 'PENDING';
+-- V3: un solo evento inicial por envío
+CREATE UNIQUE INDEX uq_events_initial     ON shipment_events (shipment_id)
+  WHERE from_status IS NULL;
 ```
 
 ## 6. Flujos críticos

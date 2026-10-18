@@ -34,7 +34,7 @@ src/main/java/com/pedromiras/logitrack/
 
 ## Ejecutar en local
 
-Requisitos: Docker. Para desarrollar sin Docker para la API, también Java 21 y Maven.
+Requisitos: Docker. Para desarrollar sin Docker para la API, también Java 21 (Maven no hace falta: lo descarga `./mvnw`).
 
 ```bash
 # Todo con Docker
@@ -42,7 +42,7 @@ docker compose up --build
 
 # O solo la base de datos y la API desde el IDE / Maven
 docker compose up -d db
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 - Health check: http://localhost:8080/health
@@ -54,7 +54,7 @@ Flyway aplica las migraciones de `src/main/resources/db/migration` al arrancar.
 
 ```bash
 docker compose up -d db
-mvn verify
+./mvnw verify
 ```
 
 En GitHub Actions los tests corren contra un PostgreSQL de servicio en cada push.
