@@ -71,7 +71,7 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · Flyway · Spring JDBC (`JdbcClien
 
 - [x] Diseño, esquema y migraciones V1–V2 (probadas en PostgreSQL 16)
 - [x] Esqueleto Spring Boot, Docker, CI
-- [ ] **Verificar que compila** (`mvn verify`): las versiones del `pom.xml` (sobre todo springdoc 3.0.0) no se han comprobado aún
+- [x] Verificar que compila (`mvn verify` en verde; springdoc 3.0.0 funciona con Boot 4.1)
 - [ ] `POST /shipments` y `GET /shipments`, `GET /shipments/{id}`
 - [ ] `POST /shipments/{id}/events` con la transacción completa
 - [ ] Manejo global de errores
