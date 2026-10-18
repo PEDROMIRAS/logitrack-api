@@ -68,30 +68,26 @@ class MigrationsTest {
 
     @Test
     void rechazaUnEventoInicialQueNoEsCreated() {
-        assertThatThrownBy(() -> jdbc.sql("""
-                INSERT INTO shipment_events (shipment_id, from_status, to_status, occurred_at, recorded_by)
-                VALUES (:shipment, NULL, 'IN_TRANSIT'::shipment_status, now(), :user)""")
-                .param("shipment", shipmentId)
-                .param("user", userId)
-                .update())
+        assertThatThrownBy(() -> insertaEventoInicial("IN_TRANSIT"))
             .isInstanceOf(DataIntegrityViolationException.class)
             .hasMessageContaining("ck_events_initial");
     }
 
     @Test
     void aceptaUnSoloEventoInicialPorEnvio() {
-        assertThat(insertaEventoInicial()).isEqualTo(1);
+        assertThat(insertaEventoInicial("CREATED")).isEqualTo(1);
 
-        assertThatThrownBy(this::insertaEventoInicial)
+        assertThatThrownBy(() -> insertaEventoInicial("CREATED"))
             .isInstanceOf(DataIntegrityViolationException.class)
             .hasMessageContaining("uq_events_initial");
     }
 
-    private int insertaEventoInicial() {
+    private int insertaEventoInicial(String hasta) {
         return jdbc.sql("""
                 INSERT INTO shipment_events (shipment_id, from_status, to_status, occurred_at, recorded_by)
-                VALUES (:shipment, NULL, 'CREATED'::shipment_status, now(), :user)""")
+                VALUES (:shipment, NULL, :hasta::shipment_status, now(), :user)""")
                 .param("shipment", shipmentId)
+                .param("hasta", hasta)
                 .param("user", userId)
                 .update();
     }

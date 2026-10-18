@@ -57,7 +57,7 @@ docker compose up -d db
 ./mvnw verify
 ```
 
-En GitHub Actions los tests corren contra un PostgreSQL de servicio en cada push.
+En GitHub Actions los tests corren contra un PostgreSQL de servicio en cada pull request y en cada push a `main`.
 
 ## Despliegue
 
