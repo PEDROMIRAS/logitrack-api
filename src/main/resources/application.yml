@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: logitrack-api
+  datasource:
+    # En local apunta al Postgres de docker-compose; en Render se sobrescribe con variables de entorno
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/logitrack}
+    username: ${DATABASE_USERNAME:logitrack}
+    password: ${DATABASE_PASSWORD:logitrack}
+    hikari:
+      # Los planes gratuitos limitan las conexiones simultáneas
+      maximum-pool-size: 5
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  # Render inyecta PORT
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      path-mapping:
+        health: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

@@ -1,0 +1,56 @@
+package com.pedromiras.logitrack;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Comprueba que Flyway aplica el esquema y que la base de datos
+ * protege la máquina de estados (decisión D2).
+ * Necesita un PostgreSQL accesible: docker compose up -d db
+ */
+@SpringBootTest
+@Transactional // cada test hace rollback al terminar
+class MigrationsTest {
+
+    @Autowired
+    JdbcClient jdbc;
+
+    @Test
+    void cargaLasTransicionesPermitidas() {
+        Integer total = jdbc.sql("SELECT count(*) FROM allowed_transitions")
+                .query(Integer.class)
+                .single();
+
+        assertThat(total).isEqualTo(11);
+    }
+
+    @Test
+    void rechazaUnaTransicionInvalida() {
+        var userId = jdbc.sql("""
+                INSERT INTO users (email, password_hash) VALUES ('test@logitrack.dev', 'x')
+                RETURNING id""").query(Object.class).single();
+
+        var shipmentId = jdbc.sql("""
+                INSERT INTO shipments (tracking_code, sender_name, sender_address,
+                    recipient_name, recipient_address, origin_city, destination_city,
+                    weight_kg, created_by)
+                VALUES ('LT-TEST0001', 'Remitente', 'Calle A 1', 'Destinatario', 'Calle B 2',
+                    'Madrid', 'Valencia', 1.5, :user)
+                RETURNING id""").param("user", userId).query(Object.class).single();
+
+        assertThatThrownBy(() -> jdbc.sql("""
+                INSERT INTO shipment_events (shipment_id, from_status, to_status, occurred_at, recorded_by)
+                VALUES (:shipment, 'DELIVERED'::shipment_status, 'IN_TRANSIT'::shipment_status, now(), :user)""")
+                .param("shipment", shipmentId)
+                .param("user", userId)
+                .update())
+            .isInstanceOf(DataIntegrityViolationException.class);
+    }
+}
