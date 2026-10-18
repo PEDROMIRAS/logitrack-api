@@ -18,8 +18,8 @@ El diseño completo (arquitectura, máquina de estados, modelo de datos, flujos 
 
 ```bash
 docker compose up -d db      # PostgreSQL 16 local (puerto 5432)
-mvn spring-boot:run          # API en http://localhost:8080
-mvn verify                   # tests (necesitan la BD levantada)
+./mvnw spring-boot:run       # API en http://localhost:8080 (Maven Wrapper: no hace falta instalar Maven)
+./mvnw verify                # tests (necesitan la BD levantada)
 docker compose up --build    # todo en Docker
 ```
 
@@ -70,7 +70,7 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · Flyway · Spring JDBC (`JdbcClien
 
 ## Estado
 
-- [x] Diseño, esquema y migraciones V1–V2 (probadas en PostgreSQL 16)
+- [x] Diseño, esquema y migraciones V1–V3 (probadas en PostgreSQL 16)
 - [x] Esqueleto Spring Boot, Docker, CI
 - [x] Verificar que compila (`mvn verify` en verde; springdoc 3.0.0 funciona con Boot 4.1)
 - [ ] `POST /shipments` y `GET /shipments`, `GET /shipments/{id}`
